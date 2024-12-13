@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App</title>
+</head>
+<body>
+    <h1>Chat App</h1>
+    <form id="roomForm">
+        <input id="roomInput" placeholder="Room" required />
+        <input id="usernameInput" placeholder="Username" required />
+        <button type="submit">Join Room</button>
+    </form>
+
+    <div id="chat" style="display:none;">
+        <ul id="messages"></ul>
+        <form id="chatForm">
+            <input id="messageInput" placeholder="Message" required />
+            <button type="submit">Send</button>
+        </form>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        const roomForm = document.getElementById('roomForm');
+        const roomInput = document.getElementById('roomInput');
+        const usernameInput = document.getElementById('usernameInput');
+        const chat = document.getElementById('chat');
+        const chatForm = document.getElementById('chatForm');
+        const messageInput = document.getElementById('messageInput');
+        const messages = document.getElementById('messages');
+
+        let room = '';
+        let username = '';
+
+        // Join room
+        roomForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            room = roomInput.value.trim();
+            username = usernameInput.value.trim();
+
+            if (room && username) {
+                socket.emit('joinRoom', { room, username });
+                roomForm.style.display = 'none';
+                chat.style.display = 'block';
+            }
+        });
+
+        // Receive chat history
+        socket.on('chatHistory', (history) => {
+            messages.innerHTML = '';
+            history.forEach(({ username, message, timestamp }) => {
+                addMessage(username, message, new Date(timestamp));
+            });
+        });
+
+        // Receive new chat messages
+        socket.on('chatMessage', ({ username, message, timestamp }) => {
+            addMessage(username, message, new Date(timestamp));
+        });
+
+        // Handle chat form submission
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const message = messageInput.value.trim();
+            if (message) {
+                socket.emit('chatMessage', { room, username, message });
+                messageInput.value = '';
+            }
+        });
+
+        // Utility to add messages
+        function addMessage(username, message, timestamp) {
+            const item = document.createElement('li');
+            item.textContent = `[${timestamp.toLocaleTimeString()}] ${username}: ${message}`;
+            messages.appendChild(item);
+        }
+    </script>
+</body>
+</html>
